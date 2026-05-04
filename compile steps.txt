@@ -1,0 +1,111 @@
+========================================
+HPC PROGRAM COMPILATION STEPS (UBUNTU)
+OpenMP BFS + DFS Program
+========================================
+
+STEP 1: Open Ubuntu Terminal
+----------------------------
+Press:
+Ctrl + Alt + T
+
+Terminal will open.
+
+
+STEP 2: Install C++ Compiler (First Time Only)
+----------------------------------------------
+Update packages:
+sudo apt update
+
+Install g++ compiler:
+sudo apt install g++
+
+Check installation:
+g++ --version
+
+
+STEP 3: Create Program File
+---------------------------
+Go to Desktop:
+cd Desktop
+
+Create file:
+nano graph_parallel.cpp
+
+(You can also use gedit)
+gedit graph_parallel.cpp
+
+
+STEP 4: Paste Program
+---------------------
+1. Paste your BFS + DFS OpenMP code.
+2. Save file.
+
+NANO SAVE:
+Ctrl + O  -> Enter
+Ctrl + X  -> Exit
+
+GEDit SAVE:
+Click Save button.
+
+
+STEP 5: Compile Program (IMPORTANT)
+-----------------------------------
+Compile using OpenMP flag:
+
+g++ -fopenmp graph_parallel.cpp -o graph
+
+Explanation:
+g++        -> C++ compiler
+-fopenmp   -> Enables OpenMP parallel execution
+-o graph   -> Output executable name
+
+
+STEP 6: Run Program
+-------------------
+Execute program:
+
+./graph
+
+
+STEP 7: Enter Input
+-------------------
+Example:
+
+Enter number of vertices: 6
+Enter number of edges: 5
+0 1
+0 2
+1 3
+1 4
+2 5
+Enter starting vertex: 0
+
+
+STEP 8: Expected Output
+-----------------------
+Parallel BFS Traversal: 0 1 2 3 4 5
+Parallel DFS Traversal: 0 1 3 4 2 5
+
+
+========================================
+COMMON ERRORS & SOLUTIONS
+========================================
+
+1. omp.h not found
+Install OpenMP library:
+sudo apt install libomp-dev
+
+2. Permission denied
+Run program using:
+./graph
+
+3. graph: command not found
+You forgot ./ before filename.
+
+
+========================================
+VERY IMPORTANT VIVA POINT
+========================================
+OpenMP programs ALWAYS compile with:
+-fopenmp
+Otherwise parallel directives will not work.
