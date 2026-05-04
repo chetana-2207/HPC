@@ -1,0 +1,229 @@
+/*
+========================================================
+HPC PRACTICAL
+TITLE : Sequential vs Parallel Merge Sort using OpenMP
+(WITH USER INPUT & ARRAY DISPLAY)
+========================================================
+*/
+
+#include <iostream>
+#include <vector>
+#include <omp.h>
+
+using namespace std;
+
+//------------------------------------------------------
+// PRINT ARRAY
+//------------------------------------------------------
+void printArray(const vector<int>& arr)
+{
+    for(int x : arr)
+        cout << x << " ";
+    cout << endl;
+}
+
+//------------------------------------------------------
+// MERGE FUNCTION
+//------------------------------------------------------
+void merge(vector<int>& arr, int l, int m, int r)
+{
+    vector<int> left(arr.begin() + l, arr.begin() + m + 1);
+    vector<int> right(arr.begin() + m + 1, arr.begin() + r + 1);
+
+    int i = 0, j = 0, k = l;
+
+    while(i < left.size() && j < right.size())
+    {
+        if(left[i] <= right[j])
+            arr[k++] = left[i++];
+        else
+            arr[k++] = right[j++];
+    }
+
+    while(i < left.size()) arr[k++] = left[i++];
+    while(j < right.size()) arr[k++] = right[j++];
+}
+
+//------------------------------------------------------
+// SEQUENTIAL MERGE SORT
+//------------------------------------------------------
+void mergeSortSeq(vector<int>& arr, int l, int r)
+{
+    if(l < r)
+    {
+        int m = (l + r) / 2;
+        mergeSortSeq(arr, l, m);
+        mergeSortSeq(arr, m + 1, r);
+        merge(arr, l, m, r);
+    }
+}
+
+//------------------------------------------------------
+// PARALLEL MERGE SORT
+//------------------------------------------------------
+void mergeSortParallel(vector<int>& arr, int l, int r, int depth)
+{
+    if(l < r)
+    {
+        int m = (l + r) / 2;
+
+        if(depth <= 0)
+        {
+            mergeSortSeq(arr, l, m);
+            mergeSortSeq(arr, m + 1, r);
+        }
+        else
+        {
+            #pragma omp parallel sections
+            {
+                #pragma omp section
+                mergeSortParallel(arr, l, m, depth - 1);
+
+                #pragma omp section
+                mergeSortParallel(arr, m + 1, r, depth - 1);
+            }
+        }
+
+        merge(arr, l, m, r);
+    }
+}
+
+//------------------------------------------------------
+// MAIN FUNCTION
+//------------------------------------------------------
+int main()
+{
+    int n;
+
+    cout << "Enter number of elements: ";
+    cin >> n;
+
+    vector<int> arr(n), temp;
+
+    cout << "Enter elements (one per line):\n";
+    for(int i = 0; i < n; i++)
+    {
+        cout << "Element " << i + 1 << ": ";
+        cin >> arr[i];
+    }
+
+    cout << "\nOriginal Array:\n";
+    printArray(arr);
+
+    double start, end;
+
+    //--------------------------------------------------
+    // Sequential Merge Sort
+    //--------------------------------------------------
+    temp = arr;
+    start = omp_get_wtime();
+    mergeSortSeq(temp, 0, n - 1);
+    end = omp_get_wtime();
+
+    cout << "\nSequential Merge Sort:\n";
+    printArray(temp);
+    cout << "Time: " << (end - start) << " sec\n";
+
+    //--------------------------------------------------
+    // Parallel Merge Sort
+    //--------------------------------------------------
+    temp = arr;
+    start = omp_get_wtime();
+    mergeSortParallel(temp, 0, n - 1, 4);
+    end = omp_get_wtime();
+
+    cout << "\nParallel Merge Sort:\n";
+    printArray(temp);
+    cout << "Time: " << (end - start) << " sec\n";
+
+    return 0;
+}
+
+/*
+========================================================
+THEORY / VIVA QUESTIONS
+========================================================
+
+1. What is Merge Sort?
+- Divide and Conquer algorithm; splits array, sorts halves, then merges.
+
+2. Time Complexity?
+- Best/Average/Worst: O(n log n)
+
+3. Space Complexity?
+- O(n) due to extra arrays used in merging
+
+4. What is Parallel Merge Sort?
+- Left and right halves sorted simultaneously using threads
+
+5. What is OpenMP?
+- API for parallel programming using compiler directives
+
+6. What is #pragma omp parallel sections?
+- Divides work into independent sections executed in parallel
+
+7. Role of depth parameter?
+- Limits recursion to avoid too many threads
+
+8. Sequential vs Parallel?
+- Sequential: one task at a time
+- Parallel: multiple tasks at once
+
+9. When is parallel faster?
+- For large inputs and multi-core processors
+
+10. Limitations?
+- Thread overhead, extra memory, inefficient for small data
+
+11. Why Merge Sort suits parallelism?
+- Independent subproblems (left/right halves)
+
+========================================================
+*/Given Array:
+8 3 7 4
+
+-------------------------
+SEQUENTIAL MERGE SORT
+-------------------------
+Divide:
+[8 3]   [7 4]
+
+Divide again:
+[8] [3]   [7] [4]
+
+Sort:
+[3 8]   [4 7]
+
+Merge:
+[3 4 7 8]
+
+Meaning: Left half is processed first, then right half, then final merge.
+
+-------------------------
+PARALLEL MERGE SORT
+-------------------------
+Divide:
+[8 3]   [7 4]
+
+(Parallel execution)
+LEFT thread sorts [8 3]
+RIGHT thread sorts [7 4]
+
+After both complete:
+[3 8]   [4 7]
+
+Final merge:
+[3 4 7 8]
+
+Meaning: Both halves are sorted simultaneously using multiple threads.
+
+-------------------------
+KEY DIFFERENCE
+-------------------------
+Sequential: One half at a time  
+Parallel: Both halves at the same time (using OpenMP threads)
+
+-------------------------
+ONE-LINE CONCLUSION
+-------------------------
+Merge sort divides array into subarrays, sorts them, and merges them; parallel version executes independent parts simultaneously.

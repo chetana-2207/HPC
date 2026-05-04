@@ -1,0 +1,180 @@
+/*
+========================================================
+HPC PRACTICAL
+TITLE : Sequential vs Parallel Bubble Sort using OpenMP
+(WITH USER INPUT - ONE ELEMENT PER LINE)
+========================================================
+*/
+
+#include <iostream>
+#include <vector>
+#include <omp.h>
+
+using namespace std;
+
+//------------------------------------------------------
+// PRINT ARRAY
+//------------------------------------------------------
+void printArray(const vector<int>& arr)
+{
+    for(int x : arr)
+        cout << x << " ";
+    cout << endl;
+}
+
+//------------------------------------------------------
+// Sequential Bubble Sort
+//------------------------------------------------------
+void bubbleSortSeq(vector<int>& arr)
+{
+    int n = arr.size();
+
+    for(int i = 0; i < n - 1; i++)
+    {
+        for(int j = 0; j < n - i - 1; j++)
+        {
+            if(arr[j] > arr[j + 1])
+                swap(arr[j], arr[j + 1]);
+        }
+    }
+}
+
+//------------------------------------------------------
+// Parallel Bubble Sort (Odd-Even Method)
+//------------------------------------------------------
+void bubbleSortParallel(vector<int>& arr)
+{
+    int n = arr.size();
+
+    for(int i = 0; i < n; i++)
+    {
+        // EVEN PHASE
+        #pragma omp parallel for
+        for(int j = 0; j < n - 1; j += 2)
+        {
+            if(arr[j] > arr[j + 1])
+                swap(arr[j], arr[j + 1]);
+        }
+
+        // ODD PHASE
+        #pragma omp parallel for
+        for(int j = 1; j < n - 1; j += 2)
+        {
+            if(arr[j] > arr[j + 1])
+                swap(arr[j], arr[j + 1]);
+        }
+    }
+}
+
+//------------------------------------------------------
+// MAIN FUNCTION
+//------------------------------------------------------
+int main()
+{
+    int n;
+
+    cout << "Enter number of elements: ";
+    cin >> n;
+
+    vector<int> arr(n), temp;
+
+    cout << "Enter elements (one per line):\n";
+    for(int i = 0; i < n; i++)
+    {
+        cout << "Element " << i + 1 << ": ";
+        cin >> arr[i];
+    }
+
+    cout << "\nOriginal Array:\n";
+    printArray(arr);
+
+    double start, end;
+
+    //--------------------------------------------------
+    // Sequential Bubble Sort
+    //--------------------------------------------------
+    temp = arr;
+    start = omp_get_wtime();
+    bubbleSortSeq(temp);
+    end = omp_get_wtime();
+
+    cout << "\nSequential Bubble Sort:\n";
+    printArray(temp);
+    cout << "Time: " << (end - start) << " sec\n";
+
+    //--------------------------------------------------
+    // Parallel Bubble Sort
+    //--------------------------------------------------
+    temp = arr;
+    start = omp_get_wtime();
+    bubbleSortParallel(temp);
+    end = omp_get_wtime();
+
+    cout << "\nParallel Bubble Sort:\n";
+    printArray(temp);
+    cout << "Time: " << (end - start) << " sec\n";
+
+    return 0;
+}
+
+/*
+========================================================
+EXAMPLE OF BUBBLE SORT (SEQUENTIAL vs PARALLEL)
+========================================================
+
+Given Array:
+8 3 7 4
+
+-------------------------
+SEQUENTIAL BUBBLE SORT
+-------------------------
+Pass 1:
+Compare & swap → 3 7 4 8
+
+Pass 2:
+Compare & swap → 3 4 7 8
+
+Pass 3:
+No change → 3 4 7 8
+
+Final Sorted Array:
+3 4 7 8
+
+Meaning:
+Each pass is done one after another (step-by-step).
+
+-------------------------
+PARALLEL BUBBLE SORT (ODD-EVEN METHOD)
+-------------------------
+Initial Array:
+8 3 7 4
+
+Phase 1 (Even Index Compare in parallel):
+(8,3) → swap → 3 8 7 4
+
+Phase 2 (Odd Index Compare in parallel):
+(8,7) → swap → 3 7 8 4
+
+Phase 3 (Even Index Compare in parallel):
+(3,7) no swap, (8,4) swap → 3 7 4 8
+
+Phase 4 (Odd Index Compare in parallel):
+(7,4) → swap → 3 4 7 8
+
+Final Sorted Array:
+3 4 7 8
+
+Meaning:
+Multiple comparisons happen simultaneously using threads.
+
+-------------------------
+KEY DIFFERENCE
+-------------------------
+Sequential: One comparison at a time (pass by pass)  
+Parallel: Multiple comparisons happen together using OpenMP threads
+
+-------------------------
+ONE-LINE CONCLUSION
+-------------------------
+Bubble sort repeatedly swaps adjacent elements; parallel version speeds up sorting by performing independent comparisons simultaneously.
+========================================================*/

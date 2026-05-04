@@ -1,0 +1,305 @@
+#include <iostream>
+#include <vector>
+#include <queue>
+#include <omp.h>
+
+using namespace std;
+
+class Graph {
+    int V;
+    vector<vector<int>> adj;
+
+public:
+
+    // Constructor
+    Graph(int V) {
+        this->V = V;
+        adj.resize(V);
+    }
+
+    // Add edge
+    void addEdge(int u, int v) {
+        adj[u].push_back(v);
+        adj[v].push_back(u);
+    }
+
+    // Parallel BFS Function
+    void parallelBFS(int start) {
+
+        vector<bool> visited(V, false);
+        queue<int> q;
+
+        visited[start] = true;
+        q.push(start);
+
+        cout << "\nParallel BFS Traversal: ";
+
+        while (!q.empty()) {
+
+            int size = q.size();
+
+            #pragma omp parallel for
+            for (int i = 0; i < size; i++) {
+
+                int node = -1;
+
+                // Critical section for queue access
+                #pragma omp critical
+                {
+                    if (!q.empty()) {
+                        node = q.front();
+                        q.pop();
+                        cout << node << " ";
+                    }
+                }
+
+                if (node != -1) {
+                    for (int neighbor : adj[node]) {
+
+                        if (!visited[neighbor]) {
+
+                            #pragma omp critical
+                            {
+                                if (!visited[neighbor]) {
+                                    visited[neighbor] = true;
+                                    q.push(neighbor);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        cout << endl;
+    }
+};
+
+// Main Function
+int main() {
+
+    int V, E;
+
+    cout << "Enter number of vertices: ";
+    cin >> V;
+
+    Graph g(V);
+
+    cout << "Enter number of edges: ";
+    cin >> E;
+
+    cout << "Enter edges (u v):\n";
+
+    for (int i = 0; i < E; i++) {
+        int u, v;
+        cin >> u >> v;
+        g.addEdge(u, v);
+    }
+
+    int start;
+
+    cout << "Enter starting vertex: ";
+    cin >> start;
+
+    g.parallelBFS(start);
+
+    return 0;
+}
+
+/*
+HPC PRACTICAL VIVA QUESTIONS AND ANSWERS
+
+1. What is HPC?
+High Performance Computing uses parallel processing and powerful systems to solve complex problems faster.
+
+2. What is Parallel Computing?
+Execution of multiple tasks simultaneously using multiple processors.
+
+3. Serial vs Parallel Computing
+Serial: one task at a time.
+Parallel: multiple tasks at same time.
+
+4. What is OpenMP?
+API for shared memory parallel programming in C/C++/Fortran.
+
+5. Why OpenMP?
+Easy parallelization, uses multi-core CPU, improves performance.
+
+6. What is a Thread?
+Smallest execution unit inside a process.
+
+7. Multithreading?
+Running multiple threads simultaneously.
+
+8. What is a Core?
+Processing unit inside CPU.
+
+9. Speedup?
+Speedup = Serial Time / Parallel Time.
+
+10. Scalability?
+Ability to maintain performance when processors increase.
+
+11. Amdahl’s Law?
+Speedup = 1 / ((1-P) + P/N)
+P = parallel part, N = processors.
+
+12. Shared Memory Model?
+All processors share same memory (OpenMP).
+
+13. Distributed Memory Model?
+Each processor has private memory (MPI).
+
+14. OpenMP vs MPI
+OpenMP: shared memory, simple, single system.
+MPI: distributed memory, complex, cluster systems.
+
+15. Synchronization?
+Coordination between threads accessing shared data.
+
+16. Race Condition?
+Multiple threads modify shared data causing incorrect result.
+
+17. Critical Section?
+Code executed by only one thread at a time.
+#pragma omp critical
+
+18. #pragma omp parallel?
+Creates multiple threads.
+
+19. #pragma omp parallel for?
+Parallelizes loop iterations.
+
+20. Load Balancing?
+Equal work distribution among processors.
+
+21. What is BFS?
+Breadth First Search traverses graph level by level using queue.
+
+22. Why Parallel BFS?
+Processes multiple nodes simultaneously for faster traversal.
+
+23. What is DFS?
+Depth First Search explores graph deeply using stack/recursion.
+
+24. Reduction Clause?
+Combines results safely from threads.
+#pragma omp parallel for reduction(+:sum)
+
+25. Barrier?
+All threads wait until every thread reaches the point.
+
+26. Deadlock?
+Threads wait indefinitely for resources.
+
+27. GPU Computing?
+Parallel computing using GPU.
+
+28. CUDA?
+NVIDIA platform for GPU parallel programming.
+
+29. Advantages of HPC
+Fast computation, handles big data, scientific simulations, AI training.
+
+30. Applications of HPC
+Weather forecasting, medical research, AI, space research, finance modeling.
+
+========================================================
+EXAMPLE: BFS TRAVERSAL (SEQUENTIAL vs PARALLEL)
+========================================================
+
+Graph:
+    0
+   / \
+  1   2
+ / \   \
+3   4   5
+
+Edges:
+0-1, 0-2, 1-3, 1-4, 2-5
+
+Start Node: 0
+
+========================================================
+1. SEQUENTIAL BFS
+========================================================
+
+STEP 1:
+Queue = [0]
+Visit: 0
+Add neighbors: 1, 2
+
+--------------------------------------------------------
+
+STEP 2:
+Queue = [1, 2]
+Visit: 1
+Add neighbors: 3, 4
+
+--------------------------------------------------------
+
+STEP 3:
+Queue = [2]
+Visit: 2
+Add neighbor: 5
+
+--------------------------------------------------------
+
+STEP 4:
+Queue = [3, 4, 5]
+Visit: 3
+Visit: 4
+Visit: 5
+
+--------------------------------------------------------
+
+FINAL BFS ORDER:
+0 1 2 3 4 5
+
+--------------------------------------------------------
+MEANING:
+- Nodes are processed one by one in FIFO order
+- Queue operations are strictly sequential
+
+========================================================
+2. PARALLEL BFS
+========================================================
+
+STEP 1:
+Queue = [0]
+Visit: 0
+Next nodes (parallel): 1, 2
+
+--------------------------------------------------------
+
+STEP 2:
+Queue = [1, 2]
+Visit: 1, 2 (simultaneously)
+From 1 → 3, 4
+From 2 → 5
+
+--------------------------------------------------------
+
+STEP 3:
+Queue = [3, 4, 5]
+Visit: 3, 4, 5 (parallel processing possible)
+
+--------------------------------------------------------
+
+FINAL BFS ORDER:
+0 1 2 3 4 5
+
+========================================================
+KEY DIFFERENCE
+========================================================
+Sequential BFS:
+- One node processed at a time
+
+Parallel BFS:
+- All nodes at same level processed together
+
+========================================================
+ONE-LINE CONCLUSION
+========================================================
+Sequential BFS processes nodes one-by-one, while parallel BFS processes all nodes at the same level simultaneously using multiple threads.*/
+========================================================

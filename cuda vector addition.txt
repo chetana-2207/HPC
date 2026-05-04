@@ -1,0 +1,167 @@
+
+---------------------------------------------------------
+Program : Vector Addition using CUDA
+Domain  : High Performance Computing (GPU Programming)
+Language: CUDA C
+---------------------------------------------------------
+*/
+
+#include <stdio.h>
+
+// ================= CUDA KERNEL =================
+// __global__ → function runs on GPU
+__global__ void vectorAdd(int *A, int *B, int *C, int n)
+{
+    // Calculate global thread index
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    // Boundary check
+    if (i < n)
+    {
+        C[i] = A[i] + B[i];
+    }
+}
+
+// ================= MAIN FUNCTION =================
+int main()
+{
+    int n = 1024;
+
+    // Host arrays (CPU memory)
+    int h_A[n], h_B[n], h_C[n];
+
+    // -------- Initialize vectors --------
+    for (int i = 0; i < n; i++)
+    {
+        h_A[i] = i;
+        h_B[i] = i * 2;
+    }
+
+    // Device pointers (GPU memory)
+    int *d_A, *d_B, *d_C;
+
+    // -------- Allocate GPU memory --------
+    cudaMalloc((void**)&d_A, n * sizeof(int));
+    cudaMalloc((void**)&d_B, n * sizeof(int));
+    cudaMalloc((void**)&d_C, n * sizeof(int));
+
+    // -------- Copy data CPU → GPU --------
+    cudaMemcpy(d_A, h_A, n * sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_B, h_B, n * sizeof(int), cudaMemcpyHostToDevice);
+
+    // -------- Kernel configuration --------
+    int blockSize = 256;                        // Threads per block
+    int gridSize = (n + blockSize - 1) / blockSize;
+
+    // -------- Launch Kernel --------
+    vectorAdd<<<gridSize, blockSize>>>(d_A, d_B, d_C, n);
+
+    // -------- Copy result GPU → CPU --------
+    cudaMemcpy(h_C, d_C, n * sizeof(int), cudaMemcpyDeviceToHost);
+
+    // -------- Display Output --------
+    printf("First 10 Results:\n");
+    for (int i = 0; i < 10; i++)
+    {
+        printf("%d + %d = %d\n", h_A[i], h_B[i], h_C[i]);
+    }
+
+    // -------- Free GPU Memory --------
+    cudaFree(d_A);
+    cudaFree(d_B);
+    cudaFree(d_C);
+
+    return 0;
+}
+
+HPC VIVA QUESTIONS AND ANSWERS – CUDA VECTOR ADDITION
+
+Q1. What is CUDA?
+Ans: CUDA (Compute Unified Device Architecture) is a parallel computing platform by NVIDIA used to execute programs on GPU.
+
+Q2. Which language is used?
+Ans: CUDA C.
+
+Q3. What is GPU computing?
+Ans: Performing computations using GPU for faster parallel execution.
+
+Q4. What is a kernel?
+Ans: A function executed on GPU by many parallel threads.
+
+Q5. Meaning of __global__?
+Ans: Function runs on GPU and is called from CPU.
+
+Q6. What is Host?
+Ans: CPU and its memory.
+
+Q7. What is Device?
+Ans: GPU and its memory.
+
+Q8. What is cudaMalloc()?
+Ans: Allocates memory on GPU.
+
+Q9. What is cudaMemcpy()?
+Ans: Copies data between CPU and GPU memory.
+
+Q10. cudaMemcpy types?
+Ans: HostToDevice, DeviceToHost, DeviceToDevice.
+
+Q11. What is thread?
+Ans: Smallest parallel execution unit.
+
+Q12. What is block?
+Ans: Group of threads.
+
+Q13. What is grid?
+Ans: Collection of blocks.
+
+Q14. Thread index formula?
+Ans: i = blockIdx.x * blockDim.x + threadIdx.x;
+
+Q15. Why condition i<n used?
+Ans: Prevents accessing invalid memory.
+
+Q16. blockDim.x?
+Ans: Number of threads per block.
+
+Q17. blockIdx.x?
+Ans: Block number in grid.
+
+Q18. threadIdx.x?
+Ans: Thread number inside block.
+
+Q19. What is nvcc?
+Ans: NVIDIA CUDA compiler.
+
+Q20. Compilation command?
+Ans: nvcc vectorAdd.cu -o vectorAdd
+
+Q21. Run command?
+Ans: ./vectorAdd
+
+Q22. Type of parallelism?
+Ans: Data parallelism.
+
+Q23. CPU vs GPU?
+Ans: CPU has few cores and sequential execution; GPU has many cores and parallel execution.
+
+Q24. Why CUDA in HPC?
+Ans: Provides high performance using GPU parallelism.
+
+Q25. Applications of CUDA?
+Ans: AI, ML, image processing, simulations, scientific computing.
+
+Q26. Kernel launch meaning?
+Ans: GPU creates many parallel threads to execute kernel.
+
+Q27. Thread hierarchy?
+Ans: Grid → Block → Thread.
+
+Q28. GPU memory name?
+Ans: Device (global) memory.
+
+Q29. Can CPU directly access GPU memory?
+Ans: No, cudaMemcpy is required.
+
+Q30. HPC concept shown?
+Ans: Parallel computing using GPU acceleration.

@@ -1,0 +1,122 @@
+#include <stdio.h>
+#include <cuda_runtime.h>
+
+// Size of matrix
+#define N 4
+
+/*---------------------------------------------------------
+   GPU KERNEL FUNCTION
+   Runs on GPU (Device)
+   Each thread calculates ONE element of result matrix
+---------------------------------------------------------*/
+__global__ void matrixMul(int *A, int *B, int *C)
+{
+    // Thread index inside block
+    int row = threadIdx.y;
+    int col = threadIdx.x;
+
+    int sum = 0;
+
+    // Matrix multiplication logic
+    for(int k = 0; k < N; k++)
+    {
+        sum += A[row * N + k] * B[k * N + col];
+    }
+
+    // Store result
+    C[row * N + col] = sum;
+}
+
+
+/*---------------------------------------------------------
+   MAIN FUNCTION (Runs on CPU / Host)
+---------------------------------------------------------*/
+int main()
+{
+    // Host matrices (CPU Memory)
+    int A[N][N], B[N][N], C[N][N];
+
+    /*-------------------------------------
+      Initialize matrices
+    -------------------------------------*/
+    for(int i=0;i<N;i++)
+    {
+        for(int j=0;j<N;j++)
+        {
+            A[i][j] = i + j;   // Example values
+            B[i][j] = i * j;
+        }
+    }
+
+    // Device pointers (GPU memory)
+    int *d_A, *d_B, *d_C;
+
+    /*-------------------------------------
+      Allocate GPU memory
+    -------------------------------------*/
+    cudaMalloc((void**)&d_A, sizeof(int)*N*N);
+    cudaMalloc((void**)&d_B, sizeof(int)*N*N);
+    cudaMalloc((void**)&d_C, sizeof(int)*N*N);
+
+    /*-------------------------------------
+      Copy data Host -> Device
+    -------------------------------------*/
+    cudaMemcpy(d_A, A, sizeof(int)*N*N, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_B, B, sizeof(int)*N*N, cudaMemcpyHostToDevice);
+
+    /*-------------------------------------
+      Define thread organization
+      N x N threads -> each computes
+      one output element
+    -------------------------------------*/
+    dim3 threadsPerBlock(N, N);
+
+    /*-------------------------------------
+      Launch Kernel
+      <<< blocks , threads >>>
+    -------------------------------------*/
+    matrixMul<<<1, threadsPerBlock>>>(d_A, d_B, d_C);
+
+    // Wait until GPU finishes
+    cudaDeviceSynchronize();
+
+    /*-------------------------------------
+      Copy Result Device -> Host
+    -------------------------------------*/
+    cudaMemcpy(C, d_C, sizeof(int)*N*N, cudaMemcpyDeviceToHost);
+
+    /*-------------------------------------
+      Display Result Matrix
+    -------------------------------------*/
+    printf("\nResult Matrix:\n");
+
+    for(int i=0;i<N;i++)
+    {
+        for(int j=0;j<N;j++)
+        {
+            printf("%d ", C[i][j]);
+        }
+        printf("\n");
+    }
+
+    /*-------------------------------------
+      Free GPU memory
+    -------------------------------------*/
+    cudaFree(d_A);
+    cudaFree(d_B);
+    cudaFree(d_C);
+
+    return 0;
+}
+
+CPU vs GPU?
+A: CPU few cores, GPU thousands cores.
+
+Q: Why cudaDeviceSynchronize()?
+A: Waits until GPU execution completes.
+
+Q: Why parallel matrix multiplication?
+A: Reduces computation time.
+
+Q: Can matrix size increase?
+A: Yes, modify N and block/grid size.

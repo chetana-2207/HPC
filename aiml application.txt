@@ -1,0 +1,191 @@
+#include <iostream>
+#include <vector>
+#include <omp.h>
+
+using namespace std;
+
+int main() {
+
+    // -------------------------------
+    // HPC APPLICATION TITLE
+    // -------------------------------
+    cout << "HPC Application for AI/ML Domain\n";
+    cout << "Parallel Linear Regression using OpenMP\n\n";
+
+    // Number of dataset samples
+    const long long n = 1000000;
+
+    vector<double> x(n), y(n);
+
+    // Display number of threads
+    cout << "Number of Threads Available: "
+         << omp_get_max_threads() << endl;
+
+    // Start execution timer
+    double start_time = omp_get_wtime();
+
+    // ---------------------------------
+    // STEP 1: Parallel Data Generation
+    // Model: y = 2x + 3
+    // ---------------------------------
+    #pragma omp parallel for
+    for (long long i = 0; i < n; i++) {
+        x[i] = i * 0.001;
+        y[i] = 2.0 * x[i] + 3.0;
+    }
+
+    // ---------------------------------
+    // STEP 2: Parallel Summation
+    // ---------------------------------
+    double sum_x = 0.0;
+    double sum_y = 0.0;
+    double sum_xy = 0.0;
+    double sum_x2 = 0.0;
+
+    #pragma omp parallel for reduction(+:sum_x,sum_y,sum_xy,sum_x2)
+    for (long long i = 0; i < n; i++) {
+        sum_x  += x[i];
+        sum_y  += y[i];
+        sum_xy += x[i] * y[i];
+        sum_x2 += x[i] * x[i];
+    }
+
+    // ---------------------------------
+    // STEP 3: Linear Regression Formula
+    // y = mx + c
+    // ---------------------------------
+    double denominator = (n * sum_x2 - sum_x * sum_x);
+
+    double m = (n * sum_xy - sum_x * sum_y) / denominator;
+    double c = (sum_y - m * sum_x) / n;
+
+    // Stop timer
+    double end_time = omp_get_wtime();
+
+    // ---------------------------------
+    // OUTPUT RESULTS
+    // ---------------------------------
+    cout << "\n===== RESULT =====\n";
+    cout << "Slope (m)     : " << m << endl;
+    cout << "Intercept (c) : " << c << endl;
+
+    cout << "\nExecution Time: "
+         << end_time - start_time
+         << " seconds\n";
+
+    return 0;
+}
+
+
+
+HPC Application for AI/ML Domain
+Parallel Linear Regression using OpenMP
+
+Number of Threads Available: 8
+
+===== RESULT =====
+Slope (m)     : 2
+Intercept (c) : 3
+Execution Time: 0.01 seconds
+
+What is HPC?
+HPC (High Performance Computing) is the use of parallel processing and powerful computing resources to solve complex computational problems faster.
+Why is HPC required?
+To reduce execution time, process large datasets, and perform computationally intensive tasks efficiently.
+What is parallel computing?
+Execution of multiple computations simultaneously using multiple processors or cores.
+What is OpenMP?
+OpenMP (Open Multi-Processing) is an API used for shared-memory parallel programming in C, C++, and Fortran.
+What type of memory model does OpenMP use?
+Shared memory model.
+What is a thread?
+A thread is a lightweight process that executes a part of a program concurrently.
+What does #pragma omp mean?
+It is a compiler directive used to instruct the compiler to execute code in parallel.
+Purpose of #pragma omp parallel for?
+It divides loop iterations among multiple threads for parallel execution.
+What is data parallelism?
+When the same operation is performed on different data simultaneously.
+Why vector is used instead of array?
+Vector automatically manages memory and size dynamically.
+What does reduction clause do?
+It safely combines results from all threads into a single variable.
+Why reduction is needed?
+To avoid race conditions when multiple threads update the same variable.
+What is race condition?
+When multiple threads access and modify shared data simultaneously causing incorrect results.
+Variables used in reduction?
+sum_x, sum_y, sum_xy, sum_x2.
+What is the role of omp.h?
+Provides OpenMP functions and runtime support.
+Meaning of omp_get_wtime()?
+Returns wall clock execution time for performance measurement.
+What is speedup?
+Speedup = Sequential Time / Parallel Time.
+What is scalability?
+Ability of program performance to improve with increasing processors.
+What is linear regression?
+A machine learning method used to find relationship between input and output variables.
+Equation used in program?
+y = mx + c.
+What is slope (m)?
+Rate of change between x and y.
+What is intercept (c)?
+Value of y when x = 0.
+Why generate dummy dataset?
+To simulate large AI/ML workload for testing parallel computation.
+Why large value of n is used?
+To demonstrate HPC performance benefits.
+Which part is parallelized?
+Data generation loop and summation loop.
+Advantage of OpenMP over MPI?
+Simpler programming for shared memory systems.
+Shared vs Distributed memory?
+Shared → common memory access.
+Distributed → separate memory per processor.
+What happens without reduction clause?
+Incorrect output due to race condition.
+What compiler flag enables OpenMP?
+-fopenmp.
+Compilation command?
+g++ program.cpp -fopenmp -o program
+Execution command?
+./program
+How to control number of threads?
+export OMP_NUM_THREADS=4
+What is thread scheduling?
+Distribution of loop iterations among threads.
+Static scheduling?
+Equal fixed division of work.
+Dynamic scheduling?
+Work assigned during runtime.
+What is synchronization?
+Coordination between threads to maintain correctness.
+What is load balancing?
+Equal distribution of work among processors.
+What is parallel overhead?
+Extra time due to thread creation and synchronization.
+Why HPC is useful in AI/ML?
+Training models requires heavy numerical computation.
+AI/ML example using HPC?
+Model training, regression, deep learning, simulations.
+What is sequential execution?
+Program runs one instruction at a time.
+What is parallel execution?
+Multiple instructions executed simultaneously.
+Advantage of multicore processors?
+Higher performance through parallelism.
+Why measure execution time?
+To compare sequential vs parallel performance.
+Can OpenMP run on single core?
+Yes, but without performance gain.
+What is implicit barrier?
+Threads wait until all finish loop execution.
+What is false sharing?
+Performance loss when threads modify nearby memory locations.
+Why HPC programs use large datasets?
+Parallel benefits appear only for heavy workloads.
+Domain of this application?
+HPC application for AI/ML regression computation.
+Main learning outcome?
+Efficient parallel computation using OpenMP.

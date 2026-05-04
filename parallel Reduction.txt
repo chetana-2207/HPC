@@ -1,0 +1,160 @@
+/*
+==============================================================
+HPC PRACTICAL
+TITLE : Parallel Min, Max, Sum and Average using OpenMP
+(WITH USER INPUT)
+==============================================================
+*/
+
+#include <iostream>
+#include <omp.h>
+using namespace std;
+
+//---------------- Minimum ----------------
+int minval(int arr[], int n)
+{
+    int minval = arr[0];
+
+    #pragma omp parallel for reduction(min:minval)
+    for(int i = 0; i < n; i++)
+    {
+        if(arr[i] < minval)
+            minval = arr[i];
+    }
+    return minval;
+}
+
+//---------------- Maximum ----------------
+int maxval(int arr[], int n)
+{
+    int maxval = arr[0];
+
+    #pragma omp parallel for reduction(max:maxval)
+    for(int i = 0; i < n; i++)
+    {
+        if(arr[i] > maxval)
+            maxval = arr[i];
+    }
+    return maxval;
+}
+
+//---------------- Sum ----------------
+int sum(int arr[], int n)
+{
+    int total = 0;
+
+    #pragma omp parallel for reduction(+:total)
+    for(int i = 0; i < n; i++)
+    {
+        total += arr[i];
+    }
+    return total;
+}
+
+//---------------- Average ----------------
+double average(int arr[], int n)
+{
+    return (double)sum(arr, n) / n;
+}
+
+//---------------- Main ----------------
+int main()
+{
+    int n;
+
+    cout << "Enter number of elements: ";
+    cin >> n;
+
+    int arr[n];
+
+    cout << "Enter elements (one by one):\n";
+    for(int i = 0; i < n; i++)
+    {
+        cout << "Element " << i + 1 << ": ";
+        cin >> arr[i];
+    }
+
+    cout << "\nRESULTS:\n";
+    cout << "Minimum Value : " << minval(arr, n) << endl;
+    cout << "Maximum Value : " << maxval(arr, n) << endl;
+    cout << "Sum           : " << sum(arr, n) << endl;
+    cout << "Average       : " << average(arr, n) << endl;
+
+    return 0;
+}
+
+
+/*Time complexity is O(n) sequentially and O(n/p) in parallel using OpenMP, where p is the number of threads.
+==============================================================
+MOST ASKED EXTERNAL HPC VIVA QUESTIONS & ANSWERS
+==============================================================
+
+Q1. What is HPC?
+Ans: High Performance Computing uses parallel processing
+to solve large computational problems faster.
+
+Q2. What is OpenMP?
+Ans: OpenMP is an API for shared memory parallel programming.
+
+Q3. Why do we use #pragma omp?
+Ans: To instruct compiler to execute code in parallel.
+
+Q4. What is reduction clause?
+Ans: Combines results from multiple threads safely.
+
+Q5. Why reduction is required?
+Ans: To avoid race condition when many threads update
+the same variable.
+
+Q6. What is race condition?
+Ans: When multiple threads modify same data simultaneously
+leading to incorrect output.
+
+Q7. What type of parallelism used here?
+Ans: Data Parallelism.
+
+Q8. Shared memory or distributed memory?
+Ans: Shared Memory Model.
+
+Q9. Difference between sequential and parallel program?
+Ans:
+Sequential → single CPU core
+Parallel   → multiple cores simultaneously
+
+Q10. What happens without reduction?
+Ans: Wrong sum/min/max due to thread conflicts.
+
+Q11. What is thread?
+Ans: Smallest execution unit inside a process.
+
+Q12. How many threads OpenMP creates?
+Ans: Equal to CPU cores by default.
+
+Q13. How to set number of threads?
+Ans: export OMP_NUM_THREADS=4
+
+Q14. Compiler flag for OpenMP?
+Ans: -fopenmp
+
+Q15. Why OpenMP is used in HPC?
+Ans: Easy parallel programming with minimal code changes.
+
+Q16. Static vs Dynamic scheduling?
+Ans:
+Static → fixed work division
+Dynamic → runtime load balancing
+
+Q17. Is OpenMP portable?
+Ans: Yes, across Linux/Unix systems.
+
+Q18. Why average calls sum()?
+Ans: Average = Total Sum / Number of Elements.
+
+Q19. Can this run on Windows?
+Ans: Works best on Linux or WSL.
+
+Q20. Real-world applications?
+Ans: AI/ML, Weather prediction, Simulation, Data analytics.
+
+==============================================================
+*/

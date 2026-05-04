@@ -1,0 +1,355 @@
+#include <iostream>
+#include <vector>
+#include <queue>
+#include <omp.h>
+
+using namespace std;
+
+// ================= GRAPH CLASS =================
+class Graph {
+    int V;                         // Number of vertices
+    vector<vector<int>> adj;       // Adjacency list
+
+public:
+
+    // Constructor
+    Graph(int V) {
+        this->V = V;
+        adj.resize(V);
+    }
+
+    // Add edge (Undirected Graph)
+    void addEdge(int u, int v) {
+        adj[u].push_back(v);
+        adj[v].push_back(u);
+    }
+
+    // ================= PARALLEL BFS =================
+    void parallelBFS(int start) {
+
+        vector<bool> visited(V, false);
+        queue<int> q;
+
+        visited[start] = true;
+        q.push(start);
+
+        cout << "\nParallel BFS Traversal: ";
+
+        while (!q.empty()) {
+
+            int size = q.size();   // Nodes at same level
+
+            // Parallel processing of level nodes
+            #pragma omp parallel for
+            for (int i = 0; i < size; i++) {
+
+                int node = -1;
+
+                // Safe queue access
+                #pragma omp critical
+                {
+                    if (!q.empty()) {
+                        node = q.front();
+                        q.pop();
+                        cout << node << " ";
+                    }
+                }
+
+                // Visit neighbors
+                if (node != -1) {
+                    for (int neighbor : adj[node]) {
+
+                        if (!visited[neighbor]) {
+
+                            #pragma omp critical
+                            {
+                                if (!visited[neighbor]) {
+                                    visited[neighbor] = true;
+                                    q.push(neighbor);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        cout << endl;
+    }
+
+    // ================= PARALLEL DFS UTILITY =================
+    void parallelDFSUtil(int node, vector<bool> &visited) {
+
+        bool alreadyVisited;
+
+        // Protect shared visited array
+        #pragma omp critical
+        {
+            alreadyVisited = visited[node];
+
+            if (!visited[node]) {
+                visited[node] = true;
+                cout << node << " ";
+            }
+        }
+
+        if (alreadyVisited)
+            return;
+
+        // Explore neighbors in parallel
+        #pragma omp parallel for
+        for (int i = 0; i < adj[node].size(); i++) {
+
+            int neighbor = adj[node][i];
+
+            if (!visited[neighbor]) {
+
+                #pragma omp task
+                parallelDFSUtil(neighbor, visited);
+            }
+        }
+    }
+
+    // ================= PARALLEL DFS =================
+    void parallelDFS(int start) {
+
+        vector<bool> visited(V, false);
+
+        cout << "\nParallel DFS Traversal: ";
+
+        #pragma omp parallel
+        {
+            #pragma omp single
+            {
+                parallelDFSUtil(start, visited);
+            }
+        }
+
+        cout << endl;
+    }
+};
+
+// ================= MAIN FUNCTION =================
+int main() {
+
+    int V, E;
+
+    cout << "Enter number of vertices: ";
+    cin >> V;
+
+    Graph g(V);
+
+    cout << "Enter number of edges: ";
+    cin >> E;
+
+    cout << "Enter edges (u v):\n";
+
+    for (int i = 0; i < E; i++) {
+        int u, v;
+        cin >> u >> v;
+        g.addEdge(u, v);
+    }
+
+    int start;
+
+    cout << "Enter starting vertex: ";
+    cin >> start;
+
+    // Call Parallel Traversals
+    g.parallelBFS(start);
+    g.parallelDFS(start);
+
+    return 0;
+}
+
+/*
+Graph Structure:
+
+        0
+       / \
+      1   2
+     / \   \
+    3   4   5
+
+Sample Input:
+Enter number of vertices: 6
+Enter number of edges: 5
+0 1
+0 2
+1 3
+1 4
+2 5
+Enter starting vertex: 0
+
+========================================================
+GRAPH STRUCTURE
+========================================================
+
+        0
+       / \
+      1   2
+     / \   \
+    3   4   5
+
+Edges:
+0-1, 0-2, 1-3, 1-4, 2-5
+
+Start Node: 0
+
+========================================================
+1. PARALLEL BFS (LEVEL-WISE PARALLELISM)
+========================================================
+
+STEP 1:
+Queue = [0]
+Visit: 0
+Next level (parallel): 1, 2
+
+--------------------------------------------------------
+
+STEP 2:
+Queue = [1, 2]
+Visit: 1, 2 (processed in parallel threads)
+From 1 → 3, 4
+From 2 → 5
+
+--------------------------------------------------------
+
+STEP 3:
+Queue = [3, 4, 5]
+Visit: 3, 4, 5 (parallel execution possible)
+
+--------------------------------------------------------
+
+FINAL BFS ORDER:
+0 1 2 3 4 5
+
+--------------------------------------------------------
+MEANING:
+- All nodes at same level processed simultaneously
+- Uses OpenMP parallel for (level-wise parallelism)
+
+========================================================
+2. PARALLEL DFS (BRANCH-WISE PARALLELISM)
+========================================================
+
+STEP 1:
+Start at 0
+Visit: 0
+
+Parallel expansion:
+Thread 1 → explores 1
+Thread 2 → explores 2
+
+--------------------------------------------------------
+
+STEP 2:
+From 1 (parallel):
+→ 3 and 4 explored simultaneously
+
+From 2:
+→ 5 explored
+
+--------------------------------------------------------
+
+STEP 3:
+All nodes visited:
+0 1 2 3 4 5
+
+--------------------------------------------------------
+FINAL DFS ORDER (CONCEPTUAL):
+0 1 2 3 4 5
+
+--------------------------------------------------------
+MEANING:
+- Different branches executed in parallel
+- Requires synchronization to avoid duplicate visits
+- Not strictly deterministic order
+
+========================================================
+KEY DIFFERENCE
+========================================================
+
+PARALLEL BFS:
+- Level-wise parallel execution
+- Queue based synchronization
+
+PARALLEL DFS:
+- Branch-wise parallel execution
+- Recursive + thread-based splitting
+
+========================================================
+ONE-LINE CONCLUSION
+========================================================
+Parallel BFS processes nodes level by level simultaneously, while parallel DFS explores different branches concurrently using multiple threads.
+
+
+========================================================
+THEORY / VIVA QUESTIONS (PARALLEL BFS & DFS USING OpenMP)
+========================================================
+Q1.What is BFS?
+Ans:BFS(Breadth First Search)is a graph traversal technique that visits nodes level by level using a queue.
+
+Q2.What is DFS?
+Ans:DFS(Depth First Search)explores a graph by going deep into a branch before backtracking.
+
+Q3.What is Parallel BFS?
+Ans:Parallel BFS processes all nodes at the same level simultaneously using multiple threads.
+
+Q4.What is Parallel DFS?
+Ans:Parallel DFS explores different branches of a graph concurrently using multiple threads.
+
+Q5.Why BFS is easier to parallelize than DFS?
+Ans:BFS works level-wise so nodes are independent,while DFS depends on recursive depth.
+
+Q6.What is OpenMP?
+Ans:OpenMP is an API for shared memory parallel programming in C/C++.
+
+Q7.What is #pragma omp parallel for?
+Ans:It divides loop iterations among multiple threads.
+
+Q8.What is #pragma omp task?
+Ans:It creates independent tasks that can run in parallel.
+
+Q9.Why critical section is used?
+Ans:To avoid race condition while accessing shared data.
+
+Q10.What is race condition?
+Ans:When multiple threads modify shared data simultaneously causing incorrect results.
+
+Q11.What is visited array?
+Ans:It tracks visited nodes to avoid repetition.
+
+Q12.What is adjacency list?
+Ans:A graph representation where each node stores its neighbors.
+
+Q13.BFS vs DFS?
+Ans:BFS uses queue(level order),DFS uses stack/recursion(depth wise).
+
+Q14.Why parallel programming?
+Ans:To reduce execution time using multiple CPU cores.
+
+Q15.What is thread?
+Ans:Smallest unit of execution in a process.
+
+Q16.Shared memory model?
+Ans:All threads share same memory space(OpenMP model).
+
+Q17.What is synchronization?
+Ans:Coordination of threads to avoid conflicts.
+
+Q18.Level-wise parallelism?
+Ans:All nodes at same level processed together in BFS.
+
+Q19.Task parallelism?
+Ans:Different DFS branches executed as independent tasks.
+
+Q20.Applications?
+Ans:AI,web crawling,GPS,networks,routing systems.
+
+========================================================
+ONE LINE SUMMARY
+========================================================
+Parallel BFS works level-wise using threads,while Parallel DFS works branch-wise using tasks.
+========================================================
+========================================================
+*/

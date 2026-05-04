@@ -1,0 +1,355 @@
+/*
+==============================================================
+HPC PRACTICAL
+TITLE : Sequential vs Parallel Bubble Sort & Merge Sort
+USING OpenMP (WITH USER INPUT & ARRAY DISPLAY)
+==============================================================
+*/
+
+#include <iostream>
+#include <vector>
+#include <omp.h>
+
+using namespace std;
+
+//==============================================================
+// PRINT ARRAY
+//==============================================================
+void printArray(const vector<int>& arr)
+{
+    for(int x : arr)
+        cout << x << " ";
+    cout << endl;
+}
+
+//==============================================================
+// Sequential Bubble Sort
+//==============================================================
+void bubbleSortSeq(vector<int>& arr)
+{
+    int n = arr.size();
+
+    for(int i = 0; i < n - 1; i++)
+    {
+        for(int j = 0; j < n - i - 1; j++)
+        {
+            if(arr[j] > arr[j + 1])
+                swap(arr[j], arr[j + 1]);
+        }
+    }
+}
+
+//==============================================================
+// Parallel Bubble Sort (Odd-Even Method)
+//==============================================================
+void bubbleSortParallel(vector<int>& arr)
+{
+    int n = arr.size();
+
+    for(int i = 0; i < n; i++)
+    {
+        // EVEN PHASE
+        #pragma omp parallel for
+        for(int j = 0; j < n - 1; j += 2)
+        {
+            if(arr[j] > arr[j + 1])
+                swap(arr[j], arr[j + 1]);
+        }
+
+        // ODD PHASE
+        #pragma omp parallel for
+        for(int j = 1; j < n - 1; j += 2)
+        {
+            if(arr[j] > arr[j + 1])
+                swap(arr[j], arr[j + 1]);
+        }
+    }
+}
+
+//==============================================================
+// MERGE FUNCTION
+//==============================================================
+void merge(vector<int>& arr, int l, int m, int r)
+{
+    vector<int> left(arr.begin() + l, arr.begin() + m + 1);
+    vector<int> right(arr.begin() + m + 1, arr.begin() + r + 1);
+
+    int i = 0, j = 0, k = l;
+
+    while(i < left.size() && j < right.size())
+    {
+        if(left[i] <= right[j])
+            arr[k++] = left[i++];
+        else
+            arr[k++] = right[j++];
+    }
+
+    while(i < left.size()) arr[k++] = left[i++];
+    while(j < right.size()) arr[k++] = right[j++];
+}
+
+//==============================================================
+// Sequential Merge Sort
+//==============================================================
+void mergeSortSeq(vector<int>& arr, int l, int r)
+{
+    if(l < r)
+    {
+        int m = (l + r) / 2;
+        mergeSortSeq(arr, l, m);
+        mergeSortSeq(arr, m + 1, r);
+        merge(arr, l, m, r);
+    }
+}
+
+//==============================================================
+// Parallel Merge Sort
+//==============================================================
+void mergeSortParallel(vector<int>& arr, int l, int r, int depth)
+{
+    if(l < r)
+    {
+        int m = (l + r) / 2;
+
+        if(depth <= 0)
+        {
+            mergeSortSeq(arr, l, m);
+            mergeSortSeq(arr, m + 1, r);
+        }
+        else
+        {
+            #pragma omp parallel sections
+            {
+                #pragma omp section
+                mergeSortParallel(arr, l, m, depth - 1);
+
+                #pragma omp section
+                mergeSortParallel(arr, m + 1, r, depth - 1);
+            }
+        }
+
+        merge(arr, l, m, r);
+    }
+}
+
+//==============================================================
+// MAIN FUNCTION
+//==============================================================
+int main()
+{
+    int n;
+
+    cout << "Enter number of elements: ";
+    cin >> n;
+
+    vector<int> arr(n), temp;
+
+    cout << "Enter elements:\n";
+    for(int i = 0; i < n; i++)
+        cin >> arr[i];
+
+    cout << "\nOriginal Array:\n";
+    printArray(arr);
+
+    double start, end;
+
+    //---------------- Bubble Sort Sequential ----------------
+    temp = arr;
+    start = omp_get_wtime();
+    bubbleSortSeq(temp);
+    end = omp_get_wtime();
+
+    cout << "\nSequential Bubble Sort:\n";
+    printArray(temp);
+    cout << "Time: " << (end - start) << " sec\n";
+
+    //---------------- Bubble Sort Parallel ----------------
+    temp = arr;
+    start = omp_get_wtime();
+    bubbleSortParallel(temp);
+    end = omp_get_wtime();
+
+    cout << "\nParallel Bubble Sort:\n";
+    printArray(temp);
+    cout << "Time: " << (end - start) << " sec\n";
+
+    //---------------- Merge Sort Sequential ----------------
+    temp = arr;
+    start = omp_get_wtime();
+    mergeSortSeq(temp, 0, n - 1);
+    end = omp_get_wtime();
+
+    cout << "\nSequential Merge Sort:\n";
+    printArray(temp);
+    cout << "Time: " << (end - start) << " sec\n";
+
+    //---------------- Merge Sort Parallel ----------------
+    temp = arr;
+    start = omp_get_wtime();
+    mergeSortParallel(temp, 0, n - 1, 4);
+    end = omp_get_wtime();
+
+    cout << "\nParallel Merge Sort:\n";
+    printArray(temp);
+    cout << "Time: " << (end - start) << " sec\n";
+
+    return 0;
+}
+
+
+/*
+==============================================================
+EXAMPLE: SEQUENTIAL vs PARALLEL BUBBLE SORT & MERGE SORT
+==============================================================
+
+GIVEN ARRAY:
+8 3 7 4
+
+==============================================================
+1. BUBBLE SORT
+==============================================================
+
+SEQUENTIAL BUBBLE SORT:
+Pass 1: 3 7 4 8
+Pass 2: 3 4 7 8
+Final: 3 4 7 8
+
+Meaning: Executes step-by-step (no parallelism).
+
+--------------------------------------------------------------
+
+PARALLEL BUBBLE SORT (ODD-EVEN METHOD):
+Initial: 8 3 7 4
+
+Phase 1 (Even index compare in parallel):
+(8,3) swap → 3 8 7 4
+
+Phase 2 (Odd index compare in parallel):
+(8,7) swap → 3 7 8 4
+
+Phase 3:
+(8,4) swap → 3 7 4 8
+
+Phase 4:
+(7,4) swap → 3 4 7 8
+
+Meaning: Multiple comparisons executed using threads.
+
+==============================================================
+2. MERGE SORT
+==============================================================
+
+SEQUENTIAL MERGE SORT:
+Divide:
+[8 3] [7 4]
+[8] [3] [7] [4]
+
+Sort & Merge:
+[3 8] [4 7]
+Final: [3 4 7 8]
+
+PARALLEL MERGE SORT:
+LEFT and RIGHT halves processed simultaneously using threads.
+
+==============================================================
+KEY DIFFERENCE
+==============================================================
+Sequential: One step at a time
+Parallel: Multiple steps simultaneously using OpenMP
+
+==============================================================
+ONE-LINE CONCLUSION
+==============================================================
+Parallel processing improves performance by executing independent tasks at the same time.
+==============================================================
+What is Bubble Sort?
+Bubble Sort is a simple sorting algorithm that repeatedly swaps adjacent elements if they are in wrong order.
+It works in multiple passes until the array becomes sorted.
+What is Merge Sort?
+Merge Sort is a divide and conquer algorithm that divides array into halves, sorts them, and merges them.
+It is efficient with O(n log n) complexity.
+Why Bubble Sort is inefficient?
+It requires many comparisons and swaps even for small disorder in data.
+Its time complexity is O(n²), so it is slow for large datasets.
+Time complexity of Bubble Sort and Merge Sort?
+Bubble Sort: O(n²) in all cases.
+Merge Sort: O(n log n) in all cases.
+Which is faster and why?
+Merge Sort is faster due to divide and conquer approach.
+Bubble Sort performs more unnecessary comparisons.
+What is parallel computing?
+It is execution of multiple tasks simultaneously using multiple processors/threads.
+It improves speed and efficiency of programs.
+What is OpenMP?
+OpenMP is an API used for parallel programming in shared memory systems.
+It helps convert sequential code into parallel code easily.
+Why OpenMP is used?
+It simplifies multithreading using compiler directives.
+It improves performance on multi-core CPUs.
+What does #pragma omp parallel for do?
+It splits loop iterations among multiple threads.
+Each thread executes a part of the loop simultaneously.
+Sequential vs Parallel Bubble Sort?
+Sequential executes comparisons one by one.
+Parallel executes independent comparisons using multiple threads.
+What is odd-even sort?
+It is a parallel version of Bubble Sort.
+It alternates between even and odd index comparisons.
+Why odd-even method is used?
+It avoids data dependency issues in Bubble Sort.
+It allows safe parallel execution.
+What is merge operation?
+It combines two sorted subarrays into one sorted array.
+It is the core step of Merge Sort.
+Why Merge Sort is good for parallelization?
+Subproblems are independent and can run simultaneously.
+It follows divide and conquer structure.
+What is divide and conquer?
+It breaks a problem into smaller subproblems, solves them, and combines results.
+Merge Sort is a classic example.
+How parallel Merge Sort works?
+Left and right halves are processed using different threads.
+Then results are merged sequentially.
+What is #pragma omp parallel sections?
+It divides code blocks into sections executed in parallel.
+Each section runs in a separate thread.
+What is #pragma omp section?
+It defines a block of code inside parallel sections.
+Each section executes independently.
+What is race condition?
+It occurs when multiple threads access and modify shared data simultaneously.
+It leads to incorrect results.
+How is race condition avoided?
+By using synchronization techniques like critical sections.
+OpenMP ensures safe access to shared resources.
+Task vs Data parallelism?
+Task parallelism divides different tasks among threads.
+Data parallelism divides data among threads.
+What is depth in parallel Merge Sort?
+Depth limits recursive parallel calls to control thread creation.
+It avoids overhead of too many threads.
+Why limit depth?
+To prevent excessive thread creation and overhead.
+It improves performance balance.
+What is load balancing?
+It ensures equal work distribution among threads.
+It prevents some threads from being idle.
+What is speedup?
+Speedup is ratio of sequential time to parallel time.
+It measures performance improvement.
+What is Amdahl’s Law?
+It defines maximum speedup based on parallel portion of program.
+Even with many processors, serial part limits performance.
+Why Merge Sort preferred in HPC?
+It is stable and has O(n log n) performance.
+It is highly parallelizable.
+What is omp_get_wtime()?
+It returns wall-clock time in seconds.
+Used to measure execution time in OpenMP programs.
+Why compare execution time?
+To evaluate performance improvement due to parallelism.
+It helps analyze efficiency.
+Applications of parallel sorting?
+Used in big data processing, databases, and AI systems.
+It helps in fast data organization and retrieval.
+*/

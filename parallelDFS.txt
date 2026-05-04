@@ -1,0 +1,434 @@
+#include <iostream>
+#include <vector>
+#include <omp.h>
+
+using namespace std;
+
+// Graph class definition
+class Graph {
+    int V;                         // Number of vertices
+    vector<vector<int>> adj;       // Adjacency list
+
+public:
+
+    // Constructor
+    Graph(int V) {
+        this->V = V;
+        adj.resize(V);
+    }
+
+    // Function to add edge (undirected graph)
+    void addEdge(int u, int v) {
+        adj[u].push_back(v);
+        adj[v].push_back(u);
+    }
+
+    // Parallel DFS Utility Function
+    void parallelDFSUtil(int node, vector<bool> &visited) {
+
+        bool alreadyVisited;
+
+        // Critical section to safely access shared visited array
+        #pragma omp critical
+        {
+            alreadyVisited = visited[node];
+
+            if (!visited[node]) {
+                visited[node] = true;
+                cout << node << " ";
+            }
+        }
+
+        // If node already visited, stop recursion
+        if (alreadyVisited)
+            return;
+
+        // Parallel exploration of neighbors
+        #pragma omp parallel for
+        for (int i = 0; i < adj[node].size(); i++) {
+
+            int neighbor = adj[node][i];
+
+            // Create parallel task for each neighbor
+            if (!visited[neighbor]) {
+
+                #pragma omp task
+                parallelDFSUtil(neighbor, visited);
+            }
+        }
+    }
+
+    // Parallel DFS Driver Function
+    void parallelDFS(int start) {
+
+        vector<bool> visited(V, false);
+
+        cout << "\nParallel DFS Traversal: ";
+
+        // Start parallel region
+        #pragma omp parallel
+        {
+            // Only one thread starts DFS
+            #pragma omp single
+            {
+                parallelDFSUtil(start, visited);
+            }
+        }
+
+        cout << endl;
+    }
+};
+
+// Main Function
+int main() {
+
+    int V, E;
+
+    cout << "Enter number of vertices: ";
+    cin >> V;
+
+    Graph g(V);
+
+    cout << "Enter number of edges: ";
+    cin >> E;
+
+    cout << "Enter edges (u v):\n";
+
+    for (int i = 0; i < E; i++) {
+        int u, v;
+        cin >> u >> v;
+        g.addEdge(u, v);
+    }
+
+    int start;
+
+    cout << "Enter starting vertex: ";
+    cin >> start;
+
+    // Call Parallel DFS
+    g.parallelDFS(start);
+
+    return 0;
+}
+
+
+/*
+PARALLEL DFS USING OPENMP – LINE BY LINE VIVA EXPLANATION
+
+#include <iostream>
+Used for input and output operations.
+
+#include <vector>
+Used to store adjacency list of graph.
+
+#include <omp.h>
+Required header file for OpenMP parallel programming.
+
+using namespace std;
+Allows use of standard library names without std:: prefix.
+
+class Graph
+Defines graph data structure.
+
+int V;
+Stores number of vertices.
+
+vector<vector<int>> adj;
+Adjacency list representation of graph.
+
+Graph(int V)
+Constructor initializes number of vertices.
+
+adj.resize(V);
+Creates V empty adjacency lists.
+
+void addEdge(int u,int v)
+Function to add edge between vertices.
+
+adj[u].push_back(v);
+Adds neighbor to vertex u.
+
+adj[v].push_back(u);
+Creates undirected edge.
+
+void parallelDFSUtil(int node, vector<bool> &visited)
+Recursive DFS function executed in parallel.
+
+vector<bool> &visited
+Shared visited array passed by reference.
+
+#pragma omp critical
+Ensures only one thread accesses shared data at a time.
+
+alreadyVisited = visited[node];
+Checks whether node already visited.
+
+visited[node] = true;
+Marks node as visited.
+
+cout << node;
+Prints traversal order.
+
+if(alreadyVisited) return;
+Stops execution if node already processed.
+
+#pragma omp parallel for
+Distributes loop iterations among multiple threads.
+
+for(int i=0;i<adj[node].size();i++)
+Iterates through all neighbors.
+
+int neighbor = adj[node][i];
+Gets adjacent vertex.
+
+#pragma omp task
+Creates new parallel task for recursive DFS call.
+
+parallelDFSUtil(neighbor,visited);
+Processes neighbors concurrently.
+
+void parallelDFS(int start)
+Driver function for DFS traversal.
+
+vector<bool> visited(V,false);
+Initializes visited array.
+
+#pragma omp parallel
+Creates team of threads.
+
+#pragma omp single
+Ensures only one thread starts DFS recursion.
+
+parallelDFSUtil(start,visited);
+Begins traversal from starting vertex.
+
+cout << endl;
+Prints newline after traversal.
+
+int main()
+Program execution starts here.
+
+cin >> V;
+Reads number of vertices.
+
+Graph g(V);
+Creates graph object.
+
+cin >> E;
+Reads number of edges.
+
+g.addEdge(u,v);
+Adds edges into graph.
+
+cin >> start;
+Reads starting node.
+
+g.parallelDFS(start);
+Calls parallel DFS algorithm.
+
+return 0;
+Terminates program successfully.
+
+========================================================
+GRAPH STRUCTURE
+========================================================
+
+        0
+       / \
+      1   2
+     / \   \
+    3   4   5
+
+Edges:
+0-1, 0-2, 1-3, 1-4, 2-5
+
+Start Node: 0
+
+========================================================
+1. NORMAL (SEQUENTIAL) DFS
+========================================================
+(Uses recursion or stack, one path at a time)
+
+Step 1: Start at 0
+Visited: 0
+Go to 1
+
+Step 2: Visit 1
+Visited: 0 → 1
+Go to 3
+
+Step 3: Visit 3
+Visited: 0 → 1 → 3
+Backtrack to 1
+
+Step 4: Visit 4
+Visited: 0 → 1 → 3 → 4
+Backtrack to 0
+
+Step 5: Visit 2
+Visited: 0 → 1 → 3 → 4 → 2
+Go to 5
+
+Step 6: Visit 5
+Visited: 0 → 1 → 3 → 4 → 2 → 5
+
+FINAL DFS ORDER:
+0 1 3 4 2 5
+
+--------------------------------------------------------
+MEANING:
+- One branch is fully explored before moving to next
+-Graph Structure:
+
+        0
+       / \
+      1   2
+     / \   \
+    3   4   5
+
+Sample Input:
+Enter number of vertices: 6
+Enter number of edges: 5
+0 1
+0 2
+1 3
+1 4
+2 5
+Enter starting vertex: 0
+*/ Uses stack/recursion
+- No parallel execution
+
+========================================================
+2. PARALLEL DFS (CONCEPTUAL OPENMP VIEW)
+========================================================
+(DFS is not naturally parallel, but can be parallelized at independent branches)
+
+Step 1: Start at 0
+Visited: 0
+
+Parallel expansion from 0:
+Thread-1 explores 1
+Thread-2 explores 2
+
+--------------------------------------------------------
+
+Step 2 (Parallel execution):
+From 1 → (3, 4 in parallel)
+From 2 → (5)
+
+Visited:
+0 → 1 → 2 → 3 → 4 → 5
+
+--------------------------------------------------------
+FINAL PARALLEL DFS ORDER (CONCEPTUAL):
+0 1 2 3 4 5
+
+--------------------------------------------------------
+MEANING:
+- Different branches explored simultaneously using threads
+- Requires synchronization to avoid revisits
+- Not strictly linear like sequential DFS
+
+========================================================
+KEY DIFFERENCE
+========================================================
+Sequential DFS:
+- Follows one path deeply before backtracking
+
+Parallel DFS:
+- Explores independent branches at the same time
+
+========================================================
+ONE-LINE CONCLUSION
+========================================================
+Sequential DFS is depth-by-depth traversal, while parallel DFS explores independent branches simultaneously using multiple threads.
+*/
+========================================================
+VIVA QUESTIONS (PARALLEL DFS USING OPENMP)
+========================================================
+
+Q1. What is DFS?
+Ans: DFS (Depth First Search) is a graph traversal technique that explores a node deeply before backtracking.
+
+Q2. What is Parallel DFS?
+Ans: Parallel DFS is a version of DFS where independent branches of the graph are explored simultaneously using multiple threads.
+
+Q3. Why DFS is difficult to parallelize?
+Ans: Because DFS is recursive and depends on sequential exploration of nodes, making dependency management complex.
+
+Q4. What is OpenMP?
+Ans: OpenMP is an API used for parallel programming in shared memory systems.
+
+Q5. What is #pragma omp parallel?
+Ans: It creates multiple threads to execute a block of code simultaneously.
+
+Q6. What is #pragma omp task?
+Ans: It creates a new independent task that can be executed in parallel with other tasks.
+
+Q7. Why do we use critical section in this program?
+Ans: To prevent race conditions while accessing shared variables like visited array and output.
+
+Q8. What is a race condition?
+Ans: A situation where multiple threads access and modify shared data at the same time leading to incorrect results.
+
+Q9. What is adjacency list?
+Ans: A graph representation where each node stores a list of its adjacent nodes.
+
+Q10. What is visited array?
+Ans: It is used to keep track of already visited nodes to avoid repetition.
+
+Q11. Why do we use vector<bool> visited?
+Ans: To efficiently track visited status of each node.
+
+Q12. What is the role of #pragma omp single?
+Ans: It ensures only one thread starts the DFS traversal.
+
+Q13. What is parallel for used in DFS?
+Ans: It distributes loop iterations across multiple threads.
+
+Q14. What is the difference between task and parallel for?
+Ans:
+parallel for → divides loop iterations
+task → creates independent recursive execution units
+
+Q15. What is shared memory model?
+Ans: A model where all threads access the same memory space (used in OpenMP).
+
+Q16. What is synchronization?
+Ans: Coordination between threads to ensure correct execution.
+
+Q17. What is the output order in parallel DFS?
+Ans: It may vary due to thread scheduling.
+
+Q18. Why output is non-deterministic in parallel DFS?
+Ans: Because multiple threads execute simultaneously without fixed order.
+
+Q19. Applications of DFS?
+Ans: Topological sorting, cycle detection, path finding, scheduling problems.
+
+Q20. Difference between BFS and DFS?
+Ans:
+BFS → level order traversal using queue
+DFS → depth wise traversal using stack/recursion
+
+Q21. Why OpenMP is used here?
+Ans: To speed up traversal by using multiple CPU cores.
+
+Q22. What is graph traversal?
+Ans: Visiting all nodes of a graph in a systematic way.
+
+Q23. What is backtracking in DFS?
+Ans: Returning to previous node after exploring deeper paths.
+
+Q24. What is concurrency?
+Ans: Execution of multiple tasks overlapping in time.
+
+Q25. What is parallelism?
+Ans: Execution of multiple tasks at exactly the same time.
+
+========================================================
+ONE LINE SUMMARY
+========================================================
+Parallel DFS uses OpenMP tasks to explore independent branches simultaneously, improving performance on multi-core systems.
+========================================================
+========================================================
